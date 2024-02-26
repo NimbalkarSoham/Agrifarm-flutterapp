@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "979696473409",
+    "project_id": "agrifarm-7d57b",
+    "storage_bucket": "agrifarm-7d57b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:979696473409:android:1cfc7b8900813aee8a3dc0",
+        "android_client_info": {
+          "package_name": "com.example.agrifarm"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "979696473409-3fvf2u0h2hf5jhd47j8l6bjg10ohpdne.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDiO4RHMie4Ty1_SyHmRe3x1sGMqm6vw7M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "979696473409-3fvf2u0h2hf5jhd47j8l6bjg10ohpdne.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
