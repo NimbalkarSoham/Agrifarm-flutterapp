@@ -1,4 +1,5 @@
 // second_page.dart
+import 'package:agrifarm/consts.dart';
 import 'package:agrifarm/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -40,6 +41,7 @@ class _AddProductPageState extends State<AddProductPage> {
 
   final Dio dio = Dio();
   String imageUrl = "";
+  bool submitting = false;
 
   Future<void> _getImage() async {
     final imagePicker = ImagePicker();
@@ -87,25 +89,26 @@ class _AddProductPageState extends State<AddProductPage> {
 
   Future<void> _submitForm() async {
     // Perform image upload to Cloudinary
+    setState(() {
+      submitting = true;
+    });
     await _uploadImageToCloudinary();
 
     // Now, you can make a POST request to your API with product data
-    final apiUrl = 'https://agrifarm-lake.vercel.app';
 
     final productData = {
-      'userId': _user!.uid,
+      'userId': "fb_${_user!.uid}",
       'name': nameController.text,
       'description': descriptionController.text,
       'price': double.parse(priceController.text),
-      'image_url':
-          "https://res.cloudinary.com/dcsvvfai3/image/upload/v1704982659/vu72zezn5nwfex8oatuw.jpg", // Replace with the actual Cloudinary URL
+      'image_url': imageUrl, // Replace with the actual Cloudinary URL
       // Add other fields as needed
       'location': locationController.text,
     };
 
     try {
       final response = await dio.post(
-        '${apiUrl}/api/product/new',
+        'http://${server_url}/api/product/new',
         data: jsonEncode(productData),
       );
 
@@ -113,6 +116,10 @@ class _AddProductPageState extends State<AddProductPage> {
       print('API Response: ${response.data}');
     } catch (e) {
       print('Error making POST request: $e');
+    } finally {
+      setState(() {
+        submitting = false;
+      });
     }
   }
 
@@ -120,42 +127,44 @@ class _AddProductPageState extends State<AddProductPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: MyAppBar(),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextFormField(
-              controller: nameController,
-              decoration: InputDecoration(labelText: 'Product Name'),
-            ),
-            SizedBox(height: 16.0),
-            TextFormField(
-              controller: descriptionController,
-              decoration: InputDecoration(labelText: 'Product Description'),
-            ),
-            SizedBox(height: 16.0),
-            TextFormField(
-              controller: priceController,
-              decoration: InputDecoration(labelText: 'Product Price'),
-              keyboardType: TextInputType.number,
-            ),
-            TextFormField(
-              controller: locationController,
-              decoration: InputDecoration(labelText: 'Product Location'),
-            ),
-            SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: _getImage,
-              child: Text('Select Image'),
-            ),
-            SizedBox(height: 16.0),
-            _image != null ? Image.file(_image!) : Text('No image selected'),
-            SizedBox(height: 16.0),
-            ElevatedButton(
-              onPressed: _submitForm,
-              child: Text('Submit'),
-            ),
-          ],
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: 'Product Name'),
+              ),
+              SizedBox(height: 16.0),
+              TextFormField(
+                controller: descriptionController,
+                decoration: InputDecoration(labelText: 'Product Description'),
+              ),
+              SizedBox(height: 16.0),
+              TextFormField(
+                controller: priceController,
+                decoration: InputDecoration(labelText: 'Product Price'),
+                keyboardType: TextInputType.number,
+              ),
+              TextFormField(
+                controller: locationController,
+                decoration: InputDecoration(labelText: 'Product Location'),
+              ),
+              SizedBox(height: 16.0),
+              ElevatedButton(
+                onPressed: _getImage,
+                child: Text('Select Image'),
+              ),
+              SizedBox(height: 16.0),
+              _image != null ? Image.file(_image!) : Text('No image selected'),
+              SizedBox(height: 16.0),
+              ElevatedButton(
+                onPressed: _submitForm,
+                child: Text(submitting ? "Submitting.." : "Submit"),
+              ),
+            ],
+          ),
         ),
       ),
     );

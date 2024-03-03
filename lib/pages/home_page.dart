@@ -1,3 +1,4 @@
+import 'package:agrifarm/consts.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -25,7 +26,7 @@ class _HomePageState extends State<HomePage> {
 
   void request() async {
     Response response;
-    response = await dio.get('https://agrifarm-lake.vercel.app/api/product');
+    response = await dio.get('http://${server_url}/api/product');
     String serverResponse = response.data.toString();
 
     // Parse the JSON array
@@ -226,20 +227,23 @@ class Product {
 
   factory Product.fromJson(Map<String, dynamic> json) {
     return Product(
-      id: json['_id'],
-      name: json['name'],
-      description: json['description'],
-      image: json['image'],
-      images: List<String>.from(json['images']),
-      brand: json['brand'],
-      price: json['price'],
-      status: json['status'],
-      creator: json['creator'],
-      rating: json['rating'].toDouble(),
-      isFeatured: json['isFeatured'],
-      location: json['location'],
-      contact: json['contact'],
-      dateCreated: json['dateCreated'],
+      id: json['_id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      image: json['image'] ?? '',
+      // Use null-aware operator for List<String> conversion
+      images: List<String>.from(json['images'] ?? []),
+      brand: json['brand'] ?? '',
+      price: json['price'] ??
+          0.0, // Assuming price is a double, use appropriate default value
+      status: json['status'] ?? '',
+      creator: json['creator'] ?? '',
+      // Handle the case where 'rating' might be null or not a double
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      isFeatured: json['isFeatured'] ?? false,
+      location: json['location'] ?? '',
+      contact: json['contact'] ?? '',
+      dateCreated: json['dateCreated'] ?? '',
     );
   }
 }
