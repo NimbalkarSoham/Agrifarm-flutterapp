@@ -1,4 +1,5 @@
 import 'package:agrifarm/consts.dart';
+import 'package:agrifarm/pages/stripe_service.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -248,20 +249,38 @@ class Product {
   }
 }
 
-class ProductCard extends StatelessWidget {
+class ProductCard extends StatefulWidget {
   final Product product;
 
   const ProductCard({Key? key, required this.product}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    final int maxDescriptionLength = 100; // Change this value as needed
+  _ProductCardState createState() => _ProductCardState();
+}
 
-// Get the truncated description
-    String displayDescription =
-        product.description.length > maxDescriptionLength
-            ? '${product.description.substring(0, maxDescriptionLength)}...'
-            : product.description;
+class _ProductCardState extends State<ProductCard> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  User? _user;
+
+  @override
+  void initState() {
+    super.initState();
+    _auth.authStateChanges().listen((event) {
+      setState(() {
+        _user = event;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final int maxDescriptionLength = 100;
+
+    String displayDescription = widget.product.description.length >
+            maxDescriptionLength
+        ? '${widget.product.description.substring(0, maxDescriptionLength)}...'
+        : widget.product.description;
 
     return Card(
       elevation: 5.0,
@@ -272,26 +291,23 @@ class ProductCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Image.network(
-              product.image,
+              widget.product.image,
               width: 370,
               fit: BoxFit.cover,
             ),
             Text(
-              product.name,
+              widget.product.name,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w900,
               ),
             ),
-            Text(
-              displayDescription,
-            ),
+            Text(displayDescription),
             SizedBox(height: 8.0),
-            Text('\$${product.price.toString()}'),
+            Text('\$${widget.product.price.toString()}'),
             SizedBox(height: 16.0),
             ElevatedButton(
               onPressed: () {
-                // Show a modal when the "View Details" button is pressed
                 showModalBottomSheet(
                   context: context,
                   builder: (BuildContext context) {
@@ -300,33 +316,92 @@ class ProductCard extends StatelessWidget {
                         padding: EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            // Display all product details in the modal
                             Image.network(
-                              product.image,
+                              widget.product.image,
                               width: 370,
                               fit: BoxFit.cover,
                             ),
                             Text(
-                              product.name,
+                              widget.product.name,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            Text(product.description),
-                            Text('\$${product.price.toString()}'),
-                            // Add other product details as needed
-
-                            // Button to redirect to the payment page
+                            Text(widget.product.description),
+                            Text('\$${widget.product.price.toString()}'),
                             ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        PaymentPage(product: product),
-                                  ),
-                                );
+                              onPressed: () async {
+                                var lineItems = [
+                                  {'price': widget.product.brand, 'quantity': 1}
+                                ];
+
+                                if (mounted) {
+                                  await StripeService.stripePaymentCheckout(
+                                    lineItems,
+                                    context,
+                                    mounted,
+                                    onSuccess: () async {
+                                      print("success");
+                                      // create order and update product status to soldOut!
+                                      final dio = Dio();
+                                      Map<String, dynamic> orderData = {
+                                        'owner': widget.product.creator,
+                                        'customer': "fb_${_user?.uid}",
+                                        'product': widget.product.id,
+                                        'shippingAddress': 'Satara',
+                                        'rate': widget.product.price,
+                                      };
+
+                                      const Map<String, dynamic>
+                                          productStatusData = {
+                                        'status': 'soldOut!',
+                                      };
+
+                                      final response = await dio.post(
+                                        'http://${server_url}/api/order/new',
+                                        data: orderData,
+                                        options: Options(
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                          },
+                                        ),
+                                      );
+
+                                      if (response.statusCode == 200) {
+                                        // Order created successfully
+                                        print('Order created successfully');
+                                      }
+
+                                      final updationResponse = await dio.put(
+                                        'http://${server_url}/api/product/${widget.product.id}',
+                                        data: productStatusData,
+                                        options: Options(
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                          },
+                                        ),
+                                      );
+
+                                      if (updationResponse.statusCode == 200) {
+                                        // Product status updated successfully
+                                        print(
+                                            'Product status updated successfully');
+                                      }
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => HomePage()),
+                                      );
+                                    },
+                                    onCancel: () {
+                                      print("Canceled");
+                                    },
+                                    onError: (e) {
+                                      print("Error: " + e.toString());
+                                    },
+                                  );
+                                }
                               },
                               child: Text("Proceed to Payment"),
                             ),
@@ -346,48 +421,66 @@ class ProductCard extends StatelessWidget {
   }
 }
 
-class ProductDetailsModal extends StatelessWidget {
-  final Product product;
+// class ProductDetailsModal extends StatefulWidget {
+//   final Product product;
 
-  const ProductDetailsModal({Key? key, required this.product})
-      : super(key: key);
+//   const ProductDetailsModal({Key? key, required this.product})
+//       : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            product.name,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8.0),
-          Text(product.description),
-          SizedBox(height: 8.0),
-          Text('\$${product.price.toString()}'),
-          SizedBox(height: 16.0),
-          ElevatedButton(
-            onPressed: () {
-              // Navigate to the payment page
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => PaymentPage(product: product),
-                ),
-              );
-            },
-            child: Text("Proceed to Payment"),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//   @override
+//   _ProductDetailsModalState createState() => _ProductDetailsModalState();
+// }
+
+// class _ProductDetailsModalState extends State<ProductDetailsModal> {
+//   final GlobalKey<State> _key = GlobalKey<State>();
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       padding: EdgeInsets.all(16.0),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           Text(
+//             widget.product.name,
+//             style: TextStyle(
+//               fontSize: 24,
+//               fontWeight: FontWeight.bold,
+//             ),
+//           ),
+//           SizedBox(height: 8.0),
+//           Text(widget.product.description),
+//           SizedBox(height: 8.0),
+//           Text('\$${widget.product.price.toString()}'),
+//           SizedBox(height: 16.0),
+//           ElevatedButton(
+//             onPressed: () async {
+//               var lineItems = [
+//                 {'price': widget.product.brand, 'quantity': 1}
+//               ];
+
+//               await StripeService.stripePaymentCheckout(
+//                 lineItems,
+//                 context,
+//                 _key,
+//                 onSuccess: () {
+//                   print("success");
+//                 },
+//                 onCancel: () {
+//                   print("Canceled");
+//                 },
+//                 onError: (e) {
+//                   print("Error: " + e.toString());
+//                 },
+//               );
+//             },
+//             child: Text("Proceed to Payment"),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 class PaymentPage extends StatelessWidget {
   final Product product;
